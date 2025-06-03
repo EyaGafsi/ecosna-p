@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - media:/app/media
+      - huggingface_cache:/root/.cache/huggingface  
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - db
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+    command: gunicorn ecosnap_backend.wsgi:application --bind 0.0.0.0:8000 --timeout 120
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - media:/app/media
+      - huggingface_cache:/root/.cache/huggingface  
+    depends_on:
+      - redis
+      - db
+    env_file:
+      - .env
+    command: celery -A ecosnap_backend worker -l info
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:15
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ecosnap_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin123
+
+volumes:
+  pgdata:
+  media:
+  huggingface_cache:  
